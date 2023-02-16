@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR,  EXPECTED_STATUS, MAIN_DOC_URL, PEP, WHAT_NEWS
+from constants import BASE_DIR,  EXPECTED_STATUS, MAIN_DOC_URL, PEP
 from outputs import control_output
 from utils import get_response, find_tag
 
@@ -24,7 +24,7 @@ def whats_new(session):
         'class': 'toctree-wrapper'})
     sections_by_python = div_with_ul.find_all(
         'li', attrs={'class': 'toctree-l1'})
-    result = WHAT_NEWS
+    result = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     for section in tqdm(sections_by_python):
         version_a_tag = section.find('a')
         href = version_a_tag['href']
