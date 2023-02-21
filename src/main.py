@@ -6,7 +6,7 @@ from tqdm import tqdm
 from urllib.parse import urljoin
 
 from configs import configure_argument_parser, configure_logging
-from constants import (downloads_dir,
+from constants import (BASE_DIR, DOWNLOADS,
                        EXPECTED_STATUS, MAIN_DOC_URL, PEP)
 from collections import defaultdict as DD
 from exceptions import ParserFindTagException
@@ -79,6 +79,7 @@ def download(session):
     pdf_a4_link = pdf_a4_tag['href']
     archive_url = urljoin(downloads_url, pdf_a4_link)
     filename = archive_url.split('/')[-1]
+    downloads_dir = BASE_DIR/DOWNLOADS
     downloads_dir.mkdir(exist_ok=True)
     archive_path = downloads_dir / filename
     response = session.get(archive_url)

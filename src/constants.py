@@ -6,10 +6,10 @@ PEP = 'https://peps.python.org/'
 
 
 BASE_DIR = Path(__file__).parent
-downloads_dir = BASE_DIR / 'downloads'
+DOWNLOADS =  'downloads'
 log_dir = BASE_DIR / 'logs'
 log_file = log_dir / 'parser.log'
-results_dir = BASE_DIR / 'results'
+RESULTS = 'results'
 utf = 'utf-8'
 
 

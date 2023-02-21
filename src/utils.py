@@ -28,14 +28,14 @@ def find_tag(soup, tag, attrs=None):
     searched_tag = soup.find(tag, attrs=(attrs or {}))
     if searched_tag is None:
         raise ParserFindTagException(
-            f'{0} {1} {2}'.format(error_tag, f'{tag}', f'{attrs}'))
+            '{0} {1} {2}'.format(error_tag, f'{tag}', f'{attrs}'))
     return searched_tag
 
 
 def get_soup(session, url):
     response = get_response(session, url)
     if response is None:
-        logging.error(f'{0} {1}'.format(error_soup, f'{url}'), stack_info=True)
+        logging.error('{0} {1}'.format(error_soup, f'{url}'), stack_info=True)
         raise ParserFindUrlException(error_soup)
     soup = BeautifulSoup(response.text, features='lxml')
 
