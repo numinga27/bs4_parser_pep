@@ -1,10 +1,20 @@
-# constants.py
 from pathlib import Path
 
+
 MAIN_DOC_URL = 'https://docs.python.org/3/'
-BASE_DIR = Path(__file__).parent
-DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 PEP = 'https://peps.python.org/'
+
+
+BASE_DIR = Path(__file__).parent
+downloads_dir = BASE_DIR / 'downloads'
+log_dir = BASE_DIR / 'logs'
+log_file = log_dir / 'parser.log'
+results_dir = BASE_DIR / 'results'
+utf = 'utf-8'
+
+
+DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
+
 
 EXPECTED_STATUS = {
     'A': ['Active', 'Accepted'],
@@ -16,3 +26,7 @@ EXPECTED_STATUS = {
     'W': ['Withdrawn'],
     '': ['Draft', 'Active'],
 }
+
+
+CHOICE_PRETTY = 'pretty'
+CHOICE_FILE = 'file'
