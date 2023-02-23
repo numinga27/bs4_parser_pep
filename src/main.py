@@ -1,4 +1,6 @@
 import logging
+import os
+import traceback
 import re
 import requests_cache
 
@@ -7,16 +9,21 @@ from urllib.parse import urljoin
 
 from configs import configure_argument_parser, configure_logging
 from constants import (BASE_DIR, DOWNLOADS,
-                       EXPECTED_STATUS, MAIN_DOC_URL, PEP)
-from collections import defaultdict as DD
+                       EXPECTED_STATUS, MAIN_DOC_URL, PEP_URL)
+from collections import defaultdict
 from exceptions import ParserFindTagException
 from outputs import control_output
 from utils import find_tag, get_soup
 
 
-pars_start = 'Парсер запущен!'
-pars_com = 'Аргументы командной строки:'
-pars_end = 'Парсер завершил работу.'
+PARSER_START = 'Парсер запущен!'
+PARSER_COMMANDS = 'Аргументы командной строки: {key}'
+PARSER_END = 'Парсер завершил работу.'
+ERROR_MASSEGE = 'Не найден тег {key}'
+DOWNED = 'Архив был загружен и сохранён:{key}'
+ERROR_STATUS = '''Несовпадающие статусы: \n {key}\n Статус в картрочке
+{key_status}\n Ожидаемые статусы: {key_xptd}'''
+MASSEGE = 'Вот что пошло не так:{key}'
 
 
 def whats_new(session):
@@ -34,6 +41,8 @@ def whats_new(session):
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
         soup = get_soup(session, version_link)
+        if soup is None:
+            continue
         h1 = find_tag(soup, 'h1')
         dl = soup.find('dl')
         dl_text = dl.text.replace('\n', ' ')
@@ -53,8 +62,7 @@ def latest_versions(session):
             a_tags = ul.find_all('a')
             break
         else:
-            error_msg = f'Не найден тег {a_tags}'
-            raise ParserFindTagException(error_msg)
+            raise ParserFindTagException(ERROR_MASSEGE.format(key=a_tags))
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
@@ -85,20 +93,20 @@ def download(session):
     response = session.get(archive_url)
     with open(archive_path, 'wb') as file:
         file.write(response.content)
-    logging.info(f'Архив был загружен и сохранён: {archive_path}')
+    logging.info(DOWNED.format(key=archive_path))
 
 
 def pep(session):
     what_new_url = urljoin(
-        MAIN_DOC_URL, PEP)
+        MAIN_DOC_URL, PEP_URL)
     soup = get_soup(session, what_new_url)
     main_table = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
     div_with_table = find_tag(main_table, 'tbody')
     section_by_python = div_with_table.find_all(
         'tr')
     results = [('Статус', 'Количество')]
-    status_sum = DD(int)
-    error = []
+    status_sum = defaultdict(int)
+    errors = []
     for section in tqdm(section_by_python):
         version_a_tag = find_tag(section, 'td')
         preview_status = version_a_tag.text[1:]
@@ -106,20 +114,23 @@ def pep(session):
         href = a_tag['href']
         link = urljoin(what_new_url, href)
         soup = get_soup(session, link)
+        if soup is None:
+            continue
         dt_tags = soup.find_all('dt')
         for dt_tag in dt_tags:
             if dt_tag.text == 'Status:':
                 status = str(dt_tag.find_next_sibling().string)
                 status_sum[status] += 1
                 if status not in EXPECTED_STATUS[preview_status]:
-                    error_msg = (
-                        'Несовпадающие статусы:\n'
-                        f'{link}\n'
-                        f'Статус в картрочке {status}\n'
-                        f'Ожидаемые статусы: {EXPECTED_STATUS[preview_status]}'
+                    errors.append(
+                        ERROR_STATUS.format(
+                            key=link,
+                            key_status=status,
+                            key_xptd=EXPECTED_STATUS[preview_status]
+                        )
                     )
-                    error.append(error_msg)
-    logging.warning(error_msg)
+    for m in errors:
+        logging.info(m)
     for status in status_sum:
         results.append((status, status_sum[status]))
     results.append(('Total', sum(status_sum.values())))
@@ -137,10 +148,10 @@ MODE_TO_FUNCTION = {
 def main():
     try:
         configure_logging()
-        logging.info(format(pars_start))
+        logging.info(format(PARSER_START))
         arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
         args = arg_parser.parse_args()
-        logging.info('{0} {1}'.format(pars_com, f'{args}'))
+        logging.info(PARSER_COMMANDS.format(key=args))
         session = requests_cache.CachedSession()
         if args.clear_cache:
             session.cache.clear()
@@ -148,10 +159,10 @@ def main():
         results = MODE_TO_FUNCTION[parser_mode](session)
         if results is not None:
             control_output(results, args)
-        logging.info(format(pars_end))
-    except Exception:
-        massege = 'Что пошло не так'
-        logging.exception(massege, stack_info=True)
+        logging.info(format(PARSER_END))
+    except Exception as xcpt:
+        logging.exception(MASSEGE.format(key=traceback.format_exception(
+            None, xcpt, xcpt.__traceback__)), stack_info=True)
 
 
 if __name__ == '__main__':

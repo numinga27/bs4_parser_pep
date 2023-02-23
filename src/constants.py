@@ -2,15 +2,16 @@ from pathlib import Path
 
 
 MAIN_DOC_URL = 'https://docs.python.org/3/'
-PEP = 'https://peps.python.org/'
+PEP_URL = 'https://peps.python.org/'
 
 
 BASE_DIR = Path(__file__).parent
 DOWNLOADS = 'downloads'
-log_dir = BASE_DIR / 'logs'
-log_file = log_dir / 'parser.log'
+LOG_DIR = BASE_DIR / 'logs'
+LOG_FILE = LOG_DIR / 'parser.log'
 RESULTS = 'results'
-utf = 'utf-8'
+PRETTY = 'pretty'
+FILE = 'file'
 
 
 DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'

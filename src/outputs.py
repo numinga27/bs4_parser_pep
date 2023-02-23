@@ -4,18 +4,13 @@ import datetime as dt
 
 from prettytable import PrettyTable
 
-from constants import BASE_DIR, DATETIME_FORMAT, RESULTS, utf
+from constants import BASE_DIR, DATETIME_FORMAT, FILE, RESULTS, PRETTY
 
 
-log_info = 'Файл с результатами был сохранён:'
+LOG_INFO = 'Файл с результатами был сохранён: {key}'
 
 
 def control_output(results, cli_args, *args):
-    OUT = {
-        'pretty': pretty_output,
-        'file': file_output,
-        None: default_output
-    }
     OUT[cli_args.output](results, cli_args)
 
 
@@ -40,8 +35,15 @@ def file_output(results, cli_args):
     now_formatted = now.strftime(DATETIME_FORMAT)
     file_name = f'{parser_mode}_{now_formatted}.csv'
     file_path = results_dir / file_name
-    dialects = csv.list_dialects()
-    with open(file_path, 'w', encoding=utf) as f:
+    dialects = csv.get_dialect('unix')
+    with open(file_path, 'w', encoding='utf-8') as f:
         writer = csv.writer(f, dialect=dialects)
         writer.writerows(results)
-    logging.info('{0} {1}'.format(log_info, f'{file_name}'))
+    logging.info(LOG_INFO.format(key=file_name))
+
+
+OUT = {
+    PRETTY: pretty_output,
+    FILE: file_output,
+    None: default_output
+}
