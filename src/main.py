@@ -1,5 +1,4 @@
 import logging
-import os
 import traceback
 import re
 import requests_cache
