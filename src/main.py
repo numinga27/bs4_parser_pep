@@ -1,5 +1,4 @@
 import logging
-import traceback
 import re
 import requests_cache
 
@@ -15,14 +14,16 @@ from outputs import control_output
 from utils import find_tag, get_soup
 
 
+LOAD_ERROR = 'Возникла ошибка при загрузке страницы {url}'
 PARSER_START = 'Парсер запущен!'
-PARSER_COMMANDS = 'Аргументы командной строки: {key}'
+PARSER_COMMANDS = 'Аргументы командной строки: {arguments}'
 PARSER_END = 'Парсер завершил работу.'
-ERROR_MASSEGE = 'Не найден тег {key}'
-DOWNED = 'Архив был загружен и сохранён:{key}'
-ERROR_STATUS = '''Несовпадающие статусы: \n {key}\n Статус в картрочке
-{key_status}\n Ожидаемые статусы: {key_xptd}'''
-MASSEGE = 'Вот что пошло не так:{key}'
+ERROR_MASSEGE = 'Не найден тег {tag}'
+DOWNED = 'Архив был загружен и сохранён:{archive}'
+ERROR_STATUS = ('Несовпадающие статусы: \n'
+                '{status}\n'
+                'Статус в картрочке : {card_status}\n'
+                'Ожидаемые статусы: {key_expected}')
 
 
 def whats_new(session):
@@ -39,9 +40,10 @@ def whats_new(session):
         version_a_tag = section.find('a')
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
-        soup = get_soup(session, version_link)
-        if soup is None:
-            continue
+        try:
+            soup = get_soup(session, version_link)
+        except Exception:
+            logging.warning(LOAD_ERROR.format(url=version_link))
         h1 = find_tag(soup, 'h1')
         dl = soup.find('dl')
         dl_text = dl.text.replace('\n', ' ')
@@ -61,7 +63,7 @@ def latest_versions(session):
             a_tags = ul.find_all('a')
             break
         else:
-            raise ParserFindTagException(ERROR_MASSEGE.format(key=a_tags))
+            raise ParserFindTagException(ERROR_MASSEGE.format(tag=a_tags))
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
@@ -92,7 +94,7 @@ def download(session):
     response = session.get(archive_url)
     with open(archive_path, 'wb') as file:
         file.write(response.content)
-    logging.info(DOWNED.format(key=archive_path))
+    logging.info(DOWNED.format(archive=archive_path))
 
 
 def pep(session):
@@ -112,24 +114,26 @@ def pep(session):
         a_tag = find_tag(section, 'a')
         href = a_tag['href']
         link = urljoin(what_new_url, href)
-        soup = get_soup(session, link)
-        if soup is None:
-            continue
+        try:
+            soup = get_soup(session, link)
+        except Exception:
+            logging.warning(LOAD_ERROR.format(url=link))
         dt_tags = soup.find_all('dt')
         for dt_tag in dt_tags:
-            if dt_tag.text == 'Status:':
-                status = str(dt_tag.find_next_sibling().string)
-                status_sum[status] += 1
-                if status not in EXPECTED_STATUS[preview_status]:
-                    errors.append(
-                        ERROR_STATUS.format(
-                            key=link,
-                            key_status=status,
-                            key_xptd=EXPECTED_STATUS[preview_status]
-                        )
+            if dt_tag.text != 'Status:':
+                continue
+            status = dt_tag.find_next_sibling().text
+            status_sum[status] += 1
+            if status not in EXPECTED_STATUS[preview_status]:
+                errors.append(
+                    ERROR_STATUS.format(
+                        status=link,
+                        card_status=status,
+                        key_expected=EXPECTED_STATUS[preview_status]
                     )
-    for m in errors:
-        logging.info(m)
+                )
+    for message in errors:
+        logging.info(message)
     for status in status_sum:
         results.append((status, status_sum[status]))
     results.append(('Total', sum(status_sum.values())))
@@ -150,7 +154,7 @@ def main():
         logging.info(format(PARSER_START))
         arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
         args = arg_parser.parse_args()
-        logging.info(PARSER_COMMANDS.format(key=args))
+        logging.info(PARSER_COMMANDS.format(arguments=args))
         session = requests_cache.CachedSession()
         if args.clear_cache:
             session.cache.clear()
@@ -159,9 +163,8 @@ def main():
         if results is not None:
             control_output(results, args)
         logging.info(format(PARSER_END))
-    except Exception as xcpt:
-        logging.exception(MASSEGE.format(key=traceback.format_exception(
-            None, xcpt, xcpt.__traceback__)), stack_info=True)
+    except Exception as excepts:
+        logging.exception(excepts, stack_info=True)
 
 
 if __name__ == '__main__':

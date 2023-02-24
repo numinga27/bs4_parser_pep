@@ -1,21 +1,20 @@
 from bs4 import BeautifulSoup
 
-from exceptions import ParserFindTagException, ParserFindUrlException
+from exceptions import ParserFindTagException
 
 
 LOAD_ERROR = 'Возникла ошибка при загрузке страницы {url}'
 ERROR_TAG = 'Не найден тег {tag} {attrs}'
-XML = 'lxml'
+ENCODING = 'utf-8'
 
 
-def get_response(session, url=None):
+def get_response(session, url):
     response = session.get(url)
     if response is None:
-        raise ParserFindUrlException(
-            LOAD_ERROR.format(url=url),
-            stack_info=True
+        raise Exception(
+            LOAD_ERROR.format(url=url)
         )
-    response.encoding = 'utf-8'
+    response.encoding = ENCODING
 
     return response
 
@@ -29,7 +28,7 @@ def find_tag(soup, tag, attrs=None):
     return searched_tag
 
 
-def get_soup(session, url):
+def get_soup(session, url, XML='lxml'):
     response = get_response(session, url)
     soup = BeautifulSoup(response.text, features=XML)
 
