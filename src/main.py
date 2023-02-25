@@ -1,5 +1,6 @@
 import logging
 import re
+import requests
 import requests_cache
 
 from tqdm import tqdm
@@ -24,6 +25,7 @@ ERROR_STATUS = ('Несовпадающие статусы: \n'
                 '{status}\n'
                 'Статус в картрочке : {card_status}\n'
                 'Ожидаемые статусы: {key_expected}')
+WORK_PROGARM = 'Ошибка в вылполнеия кода основной программы'
 
 
 def whats_new(session):
@@ -36,20 +38,24 @@ def whats_new(session):
     sections_by_python = div_with_ul.find_all(
         'li', attrs={'class': 'toctree-l1'})
     result = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
+    load_errors = []
     for section in tqdm(sections_by_python):
         version_a_tag = section.find('a')
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
         try:
             soup = get_soup(session, version_link)
-        except Exception:
-            logging.warning(LOAD_ERROR.format(url=version_link))
+        except requests.ConnectionError:
+            load_errors.append(LOAD_ERROR.format(url=version_link))
+            break
         h1 = find_tag(soup, 'h1')
         dl = soup.find('dl')
         dl_text = dl.text.replace('\n', ' ')
         result.append(
             (version_link, h1.text, dl_text)
         )
+    for massege in load_errors:
+        logging.warning(massege)
 
     return result
 
@@ -108,6 +114,7 @@ def pep(session):
     results = [('Статус', 'Количество')]
     status_sum = defaultdict(int)
     errors = []
+    load_errors = []
     for section in tqdm(section_by_python):
         version_a_tag = find_tag(section, 'td')
         preview_status = version_a_tag.text[1:]
@@ -116,8 +123,9 @@ def pep(session):
         link = urljoin(what_new_url, href)
         try:
             soup = get_soup(session, link)
-        except Exception:
-            logging.warning(LOAD_ERROR.format(url=link))
+        except requests.ConnectionError:
+            load_errors.append(LOAD_ERROR.format(url=link))
+            break
         dt_tags = soup.find_all('dt')
         for dt_tag in dt_tags:
             if dt_tag.text != 'Status:':
@@ -134,9 +142,12 @@ def pep(session):
                 )
     for message in errors:
         logging.info(message)
+    for message_excepts in load_errors:
+        logging.warning(message_excepts)
     for status in status_sum:
         results.append((status, status_sum[status]))
     results.append(('Total', sum(status_sum.values())))
+
     return results
 
 
@@ -151,7 +162,7 @@ MODE_TO_FUNCTION = {
 def main():
     try:
         configure_logging()
-        logging.info(format(PARSER_START))
+        logging.info(PARSER_START)
         arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
         args = arg_parser.parse_args()
         logging.info(PARSER_COMMANDS.format(arguments=args))
@@ -162,9 +173,9 @@ def main():
         results = MODE_TO_FUNCTION[parser_mode](session)
         if results is not None:
             control_output(results, args)
-        logging.info(format(PARSER_END))
-    except Exception as excepts:
-        logging.exception(excepts, stack_info=True)
+        logging.info(PARSER_END)
+    except Exception:
+        logging.exception(WORK_PROGARM, stack_info=True)
 
 
 if __name__ == '__main__':
