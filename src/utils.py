@@ -1,5 +1,3 @@
-import requests
-
 from bs4 import BeautifulSoup
 
 from exceptions import ParserFindTagException
@@ -9,13 +7,13 @@ LOAD_ERROR = 'Возникла ошибка при загрузке страни
 ERROR_TAG = 'Не найден тег {tag} {attrs}'
 
 
-def get_response(session, url, ENCODING='utf-8'):
+def get_response(session, url, encod='utf-8'):
     response = session.get(url)
     if response is None:
-        raise requests.ConnectionError(
+        raise ConnectionError(
             LOAD_ERROR.format(url=url)
         )
-    response.encoding = ENCODING
+    response.encoding = encod
 
     return response
 

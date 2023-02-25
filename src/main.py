@@ -1,6 +1,5 @@
 import logging
 import re
-import requests
 import requests_cache
 
 from tqdm import tqdm
@@ -25,7 +24,7 @@ ERROR_STATUS = ('Несовпадающие статусы: \n'
                 '{status}\n'
                 'Статус в картрочке : {card_status}\n'
                 'Ожидаемые статусы: {key_expected}')
-WORK_PROGARM = 'Ошибка в вылполнеия кода основной программы'
+WORK_PROGARM = 'Ошибка в вылполнеия кода основной программы: {exception}'
 
 
 def whats_new(session):
@@ -45,9 +44,9 @@ def whats_new(session):
         version_link = urljoin(whats_new_url, href)
         try:
             soup = get_soup(session, version_link)
-        except requests.ConnectionError:
+        except ConnectionError:
             load_errors.append(LOAD_ERROR.format(url=version_link))
-            break
+            continue
         h1 = find_tag(soup, 'h1')
         dl = soup.find('dl')
         dl_text = dl.text.replace('\n', ' ')
@@ -123,7 +122,7 @@ def pep(session):
         link = urljoin(what_new_url, href)
         try:
             soup = get_soup(session, link)
-        except requests.ConnectionError:
+        except ConnectionError:
             load_errors.append(LOAD_ERROR.format(url=link))
             break
         dt_tags = soup.find_all('dt')
@@ -140,10 +139,11 @@ def pep(session):
                         key_expected=EXPECTED_STATUS[preview_status]
                     )
                 )
-    for message in errors:
-        logging.info(message)
-    for message_excepts in load_errors:
-        logging.warning(message_excepts)
+    errors.append(load_errors)
+    for messages in errors:
+        logging.warning(messages)
+    # for message_excepts in load_errors:
+    #     logging.warning(message_excepts)
     for status in status_sum:
         results.append((status, status_sum[status]))
     results.append(('Total', sum(status_sum.values())))
@@ -175,7 +175,8 @@ def main():
             control_output(results, args)
         logging.info(PARSER_END)
     except Exception:
-        logging.exception(WORK_PROGARM, stack_info=True)
+        logging.exception(WORK_PROGARM.format(
+            exception=Exception), stack_info=True)
 
 
 if __name__ == '__main__':
