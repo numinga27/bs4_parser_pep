@@ -124,7 +124,7 @@ def pep(session):
             soup = get_soup(session, link)
         except ConnectionError:
             load_errors.append(LOAD_ERROR.format(url=link))
-            break
+            continue
         dt_tags = soup.find_all('dt')
         for dt_tag in dt_tags:
             if dt_tag.text != 'Status:':
@@ -142,8 +142,6 @@ def pep(session):
     errors.append(load_errors)
     for messages in errors:
         logging.warning(messages)
-    # for message_excepts in load_errors:
-    #     logging.warning(message_excepts)
     for status in status_sum:
         results.append((status, status_sum[status]))
     results.append(('Total', sum(status_sum.values())))
